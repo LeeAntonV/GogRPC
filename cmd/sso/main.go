@@ -25,7 +25,9 @@ func main() {
 
 	application := app.New(log, cfg.GRPC.Port, cfg.TokenTTL)
 
-	go application.GRPCServer.MustRun()
+	go func() {
+		application.GRPCServer.MustRun()
+	}()
 
 	//TODO: Initialize app
 

@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"fmt"
 	"gRPC/internal/domain/models"
 	"github.com/dgrijalva/jwt-go"
 	"google.golang.org/grpc/codes"
@@ -13,7 +14,7 @@ func CreateNewToken(user models.User, app models.App, tokenTTL time.Duration) (s
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["uid"] = user.ID
-	claims["user"] = user.Name
+	claims["user"] = user.Email
 	claims["exp"] = time.Now().Add(tokenTTL).Unix()
 	claims["app_id"] = app.ID
 
@@ -22,4 +23,19 @@ func CreateNewToken(user models.User, app models.App, tokenTTL time.Duration) (s
 		return "", status.Error(codes.Internal, "Internal error")
 	}
 	return tokenString, nil
+}
+
+// CheckTokenValidity checks if jwt token is valid for system
+//
+// If token is valid returns true, if not, false
+func CheckTokenValidity(tokenString string, app models.App) error {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return app.Secret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return fmt.Errorf("%s: %w", "Invalid token", err)
+	}
+
+	return nil
 }
