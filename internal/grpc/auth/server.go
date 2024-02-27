@@ -61,8 +61,14 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ss
 		return nil, status.Error(codes.Internal, "You are not allowed to admin panel")
 	}
 
+	isAdmin, err := s.auth.IsAdmin(ctx, int(req.UserId))
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Invalid user id")
+	}
+
 	return &ssov1.IsAdminResponse{
-		IsAdmin: true,
+		IsAdmin: isAdmin,
 	}, nil
 }
 
