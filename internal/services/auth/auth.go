@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"gRPC/internal/domain/models"
+	codesender "gRPC/internal/lib/email"
 	"gRPC/internal/lib/jwt"
 	"gRPC/internal/lib/sl"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
+	"strconv"
 	"time"
 )
 
@@ -21,9 +23,7 @@ type Auth struct {
 }
 
 type UserSaver interface {
-	SaveUser(
-		ctx context.Context, email string, passHash []byte,
-	) (uid int64, err error)
+	SaveUser(ctx context.Context, email string, passHash []byte, vercode []byte) (uid int64, err error)
 }
 
 type UserProvider interface {
@@ -119,7 +119,16 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	id, err := a.usrSaver.SaveUser(ctx, email, passHash)
+	verificationCode, err := codesender.SendEmail(email)
+	if err != nil {
+		log.Error("failed to send email")
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	stringCode := strconv.Itoa(verificationCode)
+	hashedCode, err := bcrypt.GenerateFromPassword([]byte(stringCode), bcrypt.DefaultCost)
+
+	id, err := a.usrSaver.SaveUser(ctx, email, passHash, hashedCode)
 	if err != nil {
 		log.Error("failed to save user", sl.Err(err))
 

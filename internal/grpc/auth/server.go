@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"net/mail"
 	"strings"
 )
 
@@ -42,7 +43,7 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 }
 
 func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
-	if err := validateRegisterNewUser(req); err != nil {
+	if err := validateCredentials(req); err != nil {
 		return nil, status.Error(codes.Internal, "Internal Error")
 	}
 
@@ -73,10 +74,8 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ss
 }
 
 func validateLogin(req *ssov1.LoginRequest) error {
-	if len(strings.TrimSpace(req.GetEmail())) == emptyValue ||
-		len(strings.TrimSpace(req.GetPassword())) == emptyValue {
-
-		return status.Error(codes.InvalidArgument, "Invalid email or password")
+	if err := validateCredentials; err != nil {
+		return status.Error(codes.InvalidArgument, "invalid credentials")
 	}
 
 	if req.GetAppId() == emptyValue {
@@ -86,11 +85,10 @@ func validateLogin(req *ssov1.LoginRequest) error {
 	return nil
 }
 
-func validateRegisterNewUser(req *ssov1.RegisterRequest) error {
-	if len(strings.TrimSpace(req.GetEmail())) == emptyValue ||
-		len(strings.TrimSpace(req.GetPassword())) == emptyValue {
-
-		return status.Error(codes.InvalidArgument, "Invalid email or password")
+func validateCredentials(req *ssov1.RegisterRequest) error {
+	_, err := mail.ParseAddress(req.GetEmail())
+	if err != nil || len(strings.TrimSpace(req.GetPassword())) == emptyValue {
+		return status.Error(codes.InvalidArgument, "invalid credentials")
 	}
 
 	return nil
