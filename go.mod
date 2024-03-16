@@ -6,6 +6,8 @@ require (
 	github.com/LeeAntonV/Protos v0.0.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ilyakaznacheev/cleanenv v1.5.0
+	github.com/joho/godotenv v1.5.1
+	github.com/lib/pq v1.10.9
 	golang.org/x/crypto v0.20.0
 	google.golang.org/grpc v1.61.1
 )
@@ -13,7 +15,6 @@ require (
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

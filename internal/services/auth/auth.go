@@ -15,15 +15,16 @@ import (
 )
 
 type Auth struct {
-	log         *slog.Logger
-	usrSaver    UserSaver
-	usrProvider UserProvider
-	appProvider AppProvider
-	tokenTTL    time.Duration
+	log          *slog.Logger
+	usrSaver     UserSaver
+	usrProvider  UserProvider
+	appProvider  AppProvider
+	codeProvider CodeProvider
+	tokenTTL     time.Duration
 }
 
 type UserSaver interface {
-	SaveUser(ctx context.Context, email string, passHash []byte, vercode []byte) (uid int64, err error)
+	SaveUser(ctx context.Context, email string, passHash []byte, verCode []byte) (uid int64, err error)
 }
 
 type UserProvider interface {
@@ -33,6 +34,10 @@ type UserProvider interface {
 
 type AppProvider interface {
 	App(ctx context.Context, appID int) (models.App, error)
+}
+
+type CodeProvider interface {
+	ValidCode(ctx context.Context, email string) (code string, err error)
 }
 
 var (
@@ -45,14 +50,16 @@ func New(
 	usrSaver UserSaver,
 	usrProvider UserProvider,
 	appProvider AppProvider,
+	codeProvider CodeProvider,
 	tokenTTL time.Duration,
 ) *Auth {
 	return &Auth{
-		log:         log,
-		usrSaver:    usrSaver,
-		usrProvider: usrProvider,
-		appProvider: appProvider,
-		tokenTTL:    tokenTTL,
+		log:          log,
+		usrSaver:     usrSaver,
+		usrProvider:  usrProvider,
+		appProvider:  appProvider,
+		codeProvider: codeProvider,
+		tokenTTL:     tokenTTL,
 	}
 }
 
@@ -140,9 +147,36 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 	return id, nil
 }
 
+// IsValidCode verifies if confirmation code provided by user is valid
+//
+// If so return true, else false
+func (a *Auth) IsValidCode(
+	ctx context.Context, email string, code string,
+) (bool, error) {
+	const op = "Auth.IsValidCode"
+
+	log := a.log.With(
+		slog.String("op", op),
+		slog.String("email", email),
+	)
+
+	log.Info("Trying to validate confirmation code")
+
+	dbCode, err := a.codeProvider.ValidCode(ctx, email)
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(dbCode), []byte(code)); err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return true, nil
+}
+
 // IsAdmin verifies if user is admin
 //
-// If user is not admin, returns true, else false
+// If user is not admin, returns false, else true
 func (a *Auth) IsAdmin(
 	ctx context.Context, userID int64,
 ) (bool, error) {

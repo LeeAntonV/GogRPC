@@ -1,4 +1,5 @@
 env: "local"
+storage_path: "postgres://postgres:1234@localhost:5432/grpc?sslmode=disable"
 token_ttl: 1h
 grpc:
   port: 8000
