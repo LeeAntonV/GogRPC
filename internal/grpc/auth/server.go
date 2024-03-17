@@ -14,6 +14,7 @@ type Auth interface {
 	Login(ctx context.Context, email string, password string, appID int) (token string, err error)
 	RegisterNewUser(ctx context.Context, email string, password string) (userID int, err error)
 	IsAdmin(ctx context.Context, userID int) (bool, error)
+	ValidateCode(ctx context.Context, code string) (bool, error)
 }
 
 type serverAPI struct {
@@ -71,6 +72,22 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ss
 	return &ssov1.IsAdminResponse{
 		IsAdmin: isAdmin,
 	}, nil
+}
+
+func (s *serverAPI) ValidateCode(ctx context.Context, req *ssov1.CodeRequest) (*ssov1.CodeResponse, error) {
+	if len(strings.TrimSpace(req.Code)) == emptyvalue {
+		return nil, statuse.Error(codes.Internal, "Code field must not be empty")
+	}
+
+	validCode, err := s.auth.ValidateCode(ctx, req.Code)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Wrong code")
+	}
+
+	return &ssov1.CodeResponse{
+		ValidCode: validCode,
+	}, nil
+
 }
 
 func validateLogin(req *ssov1.LoginRequest) error {

@@ -45,14 +45,7 @@ var (
 )
 
 // New returns new instance of Auth service.
-func New(
-	log *slog.Logger,
-	usrSaver UserSaver,
-	usrProvider UserProvider,
-	appProvider AppProvider,
-	codeProvider CodeProvider,
-	tokenTTL time.Duration,
-) *Auth {
+func New(log *slog.Logger, usrSaver UserSaver, usrProvider UserProvider, appProvider AppProvider, codeProvider CodeProvider, tokenTTL time.Duration) *Auth {
 	return &Auth{
 		log:          log,
 		usrSaver:     usrSaver,

@@ -2,6 +2,8 @@ package app
 
 import (
 	grpcapp "gRPC/internal/app/grpc"
+	"gRPC/internal/services/auth"
+	"gRPC/internal/storage/postgres"
 	"log/slog"
 	"time"
 )
@@ -11,7 +13,20 @@ type App struct {
 }
 
 func New(log *slog.Logger, port int, storagePath string, tokenTTL time.Duration) *App {
-	grpcApp := grpcapp.New(log, port)
+	storage, err := postgres.New(storagePath)
+	if err != nil {
+		panic(err)
+	}
+
+	authservice := auth.New(
+		log,
+		storage,
+		storage,
+		storage,
+		storage,
+		tokenTTL,
+	)
+	grpcApp := grpcapp.New(log, authservice, port)
 
 	return &App{
 		GRPCServer: grpcApp,

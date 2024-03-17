@@ -14,7 +14,7 @@ type Storage struct {
 	db *sql.DB
 }
 
-func (s *Storage) New(storagePath string) (*Storage, error) {
+func New(storagePath string) (*Storage, error) {
 	const op = "storage.postgresql.New"
 
 	db, err := sql.Open("postgres", storagePath)
