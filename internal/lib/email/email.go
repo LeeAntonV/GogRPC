@@ -46,7 +46,7 @@ func SendEmail(email string) (int, error) {
 
 	if err != nil {
 		log.Error("Failed to send email", sl.Err(err))
-		return 0, status.Error(codes.Internal, "Failed to send email")
+		return 0, status.Error(codes.Internal, "Failed to send code")
 	}
 
 	return randomInt, nil

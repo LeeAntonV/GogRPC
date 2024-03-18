@@ -26,7 +26,7 @@ func New(storagePath string) (*Storage, error) {
 }
 
 // SaveUser saves user to db
-func (s *Storage) SaveUser(ctx context.Context, email string, passHash string, hashCode string) (int64, error) {
+func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte, hashCode []byte) (uid int64, err error) {
 	const op = "storage.postgres.SaveUser"
 
 	stmt, err := s.db.Prepare("INSERT INTO user_profile(email, hash, code) VALUES($1,$2,$3)")
@@ -34,19 +34,22 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash string, h
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	res, err := stmt.ExecContext(ctx, email, passHash, hashCode)
+	_, err = stmt.ExecContext(ctx, email, passHash, hashCode)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("%s: %w", op, storage.ErrUserExists)
+			return 0, fmt.Errorf("%s: %w", op, err)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	id, err := res.LastInsertId()
+	var id int64
+	stmt, err = s.db.Prepare("SELECT id FROM user_profile WHERE email = $1")
+	row := stmt.QueryRowContext(ctx, email)
+
+	err = row.Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-
 	return id, nil
 }
 

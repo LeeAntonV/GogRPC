@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"gRPC/internal/domain/models"
-	codesender "gRPC/internal/lib/email"
 	"gRPC/internal/lib/jwt"
 	"gRPC/internal/lib/sl"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
-	"strconv"
 	"time"
 )
 
@@ -47,9 +45,9 @@ var (
 // New returns new instance of Auth service.
 func New(log *slog.Logger, usrSaver UserSaver, usrProvider UserProvider, appProvider AppProvider, codeProvider CodeProvider, tokenTTL time.Duration) *Auth {
 	return &Auth{
-		log:          log,
 		usrSaver:     usrSaver,
 		usrProvider:  usrProvider,
+		log:          log,
 		appProvider:  appProvider,
 		codeProvider: codeProvider,
 		tokenTTL:     tokenTTL,
@@ -103,7 +101,7 @@ func (a *Auth) Login(
 // RegisterNewUser verifies if user with this email do not exist
 //
 // If user exists, returns error
-func (a *Auth) RegisterNewUser(ctx context.Context, email string, password string) (int64, error) {
+func (a *Auth) RegisterNewUser(ctx context.Context, email string, password string) (userID int64, err error) {
 	const op = "Auth.RegisterNewUser"
 
 	log := a.log.With(
@@ -116,23 +114,23 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Error("failed to generate password hash", sl.Err(err))
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return 2, fmt.Errorf("%s: %w", op, err)
 	}
 
-	verificationCode, err := codesender.SendEmail(email)
-	if err != nil {
-		log.Error("failed to send email")
-		return 0, fmt.Errorf("%s: %w", op, err)
-	}
+	//TODO: fix code sending bug
+	//verificationCode, err := codesender.SendEmail(email)
+	//if err != nil {
+	//	log.Error("Failed to send code")
+	//	return 0, fmt.Errorf("%s: %w", op, err)
+	//}
+	//
+	//stringCode := strconv.Itoa(verificationCode)
+	//hashedCode, err := bcrypt.GenerateFromPassword([]byte(stringCode), bcrypt.DefaultCost)
 
-	stringCode := strconv.Itoa(verificationCode)
-	hashedCode, err := bcrypt.GenerateFromPassword([]byte(stringCode), bcrypt.DefaultCost)
-
-	id, err := a.usrSaver.SaveUser(ctx, email, passHash, hashedCode)
+	id, err := a.usrSaver.SaveUser(ctx, email, passHash, []byte("100200"))
 	if err != nil {
 		log.Error("failed to save user", sl.Err(err))
-
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return 1, fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.Info("user registered")
@@ -140,13 +138,13 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 	return id, nil
 }
 
-// IsValidCode verifies if confirmation code provided by user is valid
+// ValidateCode verifies if confirmation code provided by user is valid
 //
 // If so return true, else false
-func (a *Auth) IsValidCode(
+func (a *Auth) ValidateCode(
 	ctx context.Context, email string, code string,
 ) (bool, error) {
-	const op = "Auth.IsValidCode"
+	const op = "Auth.ValidateCode"
 
 	log := a.log.With(
 		slog.String("op", op),
@@ -171,18 +169,18 @@ func (a *Auth) IsValidCode(
 //
 // If user is not admin, returns false, else true
 func (a *Auth) IsAdmin(
-	ctx context.Context, userID int64,
+	ctx context.Context, userID int,
 ) (bool, error) {
 	const op = "Auth.IsAdmin"
 
 	log := a.log.With(
 		slog.String("op", op),
-		slog.Int64("uid", userID),
+		slog.Int("uid", userID),
 	)
 
 	log.Info("checking if user is admin")
 
-	isAdmin, err := a.usrProvider.IsAdmin(ctx, userID)
+	isAdmin, err := a.usrProvider.IsAdmin(ctx, int64(userID))
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}

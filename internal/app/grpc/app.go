@@ -3,7 +3,6 @@ package grpcapp
 import (
 	"fmt"
 	authgrpc "gRPC/internal/grpc/auth"
-	"gRPC/internal/services/auth"
 	"google.golang.org/grpc"
 	"log/slog"
 	"net"
@@ -21,7 +20,7 @@ func (a *App) MustRun() {
 	}
 }
 
-func New(log *slog.Logger, authService *auth.Auth, port int) *App {
+func New(log *slog.Logger, authService authgrpc.Auth, port int) *App {
 	grpcServer := grpc.NewServer()
 
 	authgrpc.Register(grpcServer, authService)

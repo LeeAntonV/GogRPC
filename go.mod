@@ -3,7 +3,7 @@ module gRPC
 go 1.21.1
 
 require (
-	github.com/LeeAntonV/Protos v0.0.1
+	github.com/LeeAntonV/Protos v0.0.4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/joho/godotenv v1.5.1
