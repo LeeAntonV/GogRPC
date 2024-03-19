@@ -2,7 +2,7 @@ package grpcapp
 
 import (
 	"context"
-	ssov3 "github.com/LeeAntonV/Protos/gen/go/sso"
+	ssov5 "github.com/LeeAntonV/Protos/gen/go/sso"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,32 +18,28 @@ type Auth interface {
 }
 
 type serverAPI struct {
-	ssov3.UnimplementedAuthServer
+	ssov5.UnimplementedAuthServer
 	auth Auth
 }
 
 const emptyValue = 0
 
 func Register(gRPC *grpc.Server, auth Auth) {
-	ssov3.RegisterAuthServer(gRPC, &serverAPI{auth: auth})
+	ssov5.RegisterAuthServer(gRPC, &serverAPI{auth: auth})
 }
 
-func (s *serverAPI) Login(ctx context.Context, req *ssov3.LoginRequest) (*ssov3.LoginResponse, error) {
-	if err := validateLogin(req); err != nil {
-		return nil, status.Error(codes.Internal, "Invalid credentials")
-	}
-
+func (s *serverAPI) Login(ctx context.Context, req *ssov5.LoginRequest) (*ssov5.LoginResponse, error) {
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Internal Error")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &ssov3.LoginResponse{
+	return &ssov5.LoginResponse{
 		Token: token,
 	}, nil
 }
 
-func (s *serverAPI) Register(ctx context.Context, req *ssov3.RegisterRequest) (*ssov3.RegisterResponse, error) {
+func (s *serverAPI) Register(ctx context.Context, req *ssov5.RegisterRequest) (*ssov5.RegisterResponse, error) {
 	if err := validateCredentials(req); err != nil {
 		return nil, status.Error(codes.Internal, "Internal Error")
 	}
@@ -53,12 +49,12 @@ func (s *serverAPI) Register(ctx context.Context, req *ssov3.RegisterRequest) (*
 		return nil, status.Error(codes.Internal, "Internal Error")
 	}
 
-	return &ssov3.RegisterResponse{
+	return &ssov5.RegisterResponse{
 		UserId: userId,
 	}, nil
 }
 
-func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov3.IsAdminRequest) (*ssov3.IsAdminResponse, error) {
+func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov5.IsAdminRequest) (*ssov5.IsAdminResponse, error) {
 	if req.UserId == emptyValue {
 		return nil, status.Error(codes.Internal, "You are not allowed to admin panel")
 	}
@@ -69,12 +65,12 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov3.IsAdminRequest) (*ss
 		return nil, status.Error(codes.Internal, "Invalid user id")
 	}
 
-	return &ssov3.IsAdminResponse{
+	return &ssov5.IsAdminResponse{
 		IsAdmin: isAdmin,
 	}, nil
 }
 
-func (s *serverAPI) ValidCode(ctx context.Context, req *ssov3.CodeRequest) (*ssov3.CodeResponse, error) {
+func (s *serverAPI) ValidCode(ctx context.Context, req *ssov5.CodeRequest) (*ssov5.CodeResponse, error) {
 	if len(strings.TrimSpace(req.Code)) == emptyValue {
 		return nil, status.Error(codes.Internal, "Code field must not be empty")
 	}
@@ -84,25 +80,13 @@ func (s *serverAPI) ValidCode(ctx context.Context, req *ssov3.CodeRequest) (*sso
 		return nil, status.Error(codes.Internal, "Wrong code")
 	}
 
-	return &ssov3.CodeResponse{
+	return &ssov5.CodeResponse{
 		ValidCode: validCode,
 	}, nil
 
 }
 
-func validateLogin(req *ssov3.LoginRequest) error {
-	if err := validateCredentials; err != nil {
-		return status.Error(codes.InvalidArgument, "invalid credentials")
-	}
-
-	if req.GetAppId() == emptyValue {
-		return status.Error(codes.InvalidArgument, "Invalid app id")
-	}
-
-	return nil
-}
-
-func validateCredentials(req *ssov3.RegisterRequest) error {
+func validateCredentials(req *ssov5.RegisterRequest) error {
 	_, err := mail.ParseAddress(req.GetEmail())
 	if err != nil || len(strings.TrimSpace(req.GetPassword())) == emptyValue {
 		return status.Error(codes.InvalidArgument, "invalid credentials")

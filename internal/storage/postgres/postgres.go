@@ -37,7 +37,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte, h
 	_, err = stmt.ExecContext(ctx, email, passHash, hashCode)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, fmt.Errorf("%s: %w", op, err)
+			return 0, fmt.Errorf("%s: %w", op, storage.ErrUserExists)
 		}
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -57,7 +57,7 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte, h
 func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.postgres.User"
 
-	stmt, err := s.db.Prepare("SELECT id, email, pass_hash FROM user_profile WHERE email = $1")
+	stmt, err := s.db.Prepare("SELECT id, email, hash FROM user_profile WHERE email = $1")
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -65,7 +65,7 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	row := stmt.QueryRowContext(ctx, email)
 
 	var user models.User
-	err = row.Scan(&user.Email, &user.PassHash, &user.ID)
+	err = row.Scan(&user.ID, &user.PassHash, &user.PassHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
@@ -76,9 +76,9 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	return user, nil
 }
 
-// ValidCode returns confirmation code by email
-func (s *Storage) ValidCode(ctx context.Context, email string) (string, error) {
-	const op = "storage.postgres.ValidCode"
+// ValidateCode returns confirmation code by email
+func (s *Storage) ValidateCode(ctx context.Context, email string) (string, error) {
+	const op = "storage.postgres.ValidateCode"
 
 	stmt, err := s.db.Prepare("SELECT code FROM user_profile WHERE email = $1")
 	if err != nil {

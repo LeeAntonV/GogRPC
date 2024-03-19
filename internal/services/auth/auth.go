@@ -5,11 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"gRPC/internal/domain/models"
+	codesender "gRPC/internal/lib/email"
 	"gRPC/internal/lib/jwt"
 	"gRPC/internal/lib/sl"
+	"gRPC/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
+	"strconv"
 	"time"
+)
+
+var (
+	ErrUserExists = errors.New("user already exists")
 )
 
 type Auth struct {
@@ -35,7 +42,7 @@ type AppProvider interface {
 }
 
 type CodeProvider interface {
-	ValidCode(ctx context.Context, email string) (code string, err error)
+	ValidateCode(ctx context.Context, email string) (code string, err error)
 }
 
 var (
@@ -95,6 +102,7 @@ func (a *Auth) Login(
 		return "", fmt.Errorf("%s :%w", op, err)
 	}
 
+	log.Info("Successful logging")
 	return token, nil
 }
 
@@ -117,18 +125,24 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 		return 2, fmt.Errorf("%s: %w", op, err)
 	}
 
-	//TODO: fix code sending bug
-	//verificationCode, err := codesender.SendEmail(email)
-	//if err != nil {
-	//	log.Error("Failed to send code")
-	//	return 0, fmt.Errorf("%s: %w", op, err)
-	//}
-	//
-	//stringCode := strconv.Itoa(verificationCode)
-	//hashedCode, err := bcrypt.GenerateFromPassword([]byte(stringCode), bcrypt.DefaultCost)
-
-	id, err := a.usrSaver.SaveUser(ctx, email, passHash, []byte("100200"))
+	verificationCode, err := codesender.SendEmail(email)
+	fmt.Println(err)
 	if err != nil {
+		fmt.Println(err)
+		log.Error("Failed to send code")
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	stringCode := strconv.Itoa(verificationCode)
+	hashedCode, err := bcrypt.GenerateFromPassword([]byte(stringCode), bcrypt.DefaultCost)
+
+	id, err := a.usrSaver.SaveUser(ctx, email, passHash, hashedCode)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserExists) {
+			log.Warn("user already exists", sl.Err(err))
+
+			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+		}
 		log.Error("failed to save user", sl.Err(err))
 		return 1, fmt.Errorf("%s: %w", op, err)
 	}
@@ -137,6 +151,19 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 
 	return id, nil
 }
+
+//func (a *Auth) GetCode(
+//	ctx context.Context, email string,
+//) (string, error) {
+//	const op = "Auth.GetCode"
+//
+//	log := a.log.With(
+//		slog.String("email", email),
+//	)
+//
+//	log.Info("trying to send code")
+//
+//}
 
 // ValidateCode verifies if confirmation code provided by user is valid
 //
@@ -153,7 +180,7 @@ func (a *Auth) ValidateCode(
 
 	log.Info("Trying to validate confirmation code")
 
-	dbCode, err := a.codeProvider.ValidCode(ctx, email)
+	dbCode, err := a.codeProvider.ValidateCode(ctx, email)
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
@@ -161,6 +188,8 @@ func (a *Auth) ValidateCode(
 	if err := bcrypt.CompareHashAndPassword([]byte(dbCode), []byte(code)); err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("Code is valid")
 
 	return true, nil
 }

@@ -18,7 +18,7 @@ func CreateNewToken(user models.User, app models.App, tokenTTL time.Duration) (s
 	claims["exp"] = time.Now().Add(tokenTTL).Unix()
 	claims["app_id"] = app.ID
 
-	tokenString, err := token.SignedString(app.Secret)
+	tokenString, err := token.SignedString([]byte(app.Secret))
 	if err != nil {
 		return "", status.Error(codes.Internal, "Internal error")
 	}
