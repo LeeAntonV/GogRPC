@@ -83,7 +83,6 @@ func (s *serverAPI) ValidCode(ctx context.Context, req *ssov5.CodeRequest) (*sso
 	return &ssov5.CodeResponse{
 		ValidCode: validCode,
 	}, nil
-
 }
 
 func validateCredentials(req *ssov5.RegisterRequest) error {

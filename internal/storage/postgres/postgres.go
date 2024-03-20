@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"gRPC/internal/domain/models"
 	"gRPC/internal/storage"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"os"
 )
 
 type Storage struct {
@@ -129,7 +131,7 @@ func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
 
 	stmt, err := s.db.Prepare("SELECT id, name, secret FROM apps WHERE id = $1")
 	if err != nil {
-		return models.App{}, nil
+		return models.App{}, err
 	}
 
 	row := stmt.QueryRowContext(ctx, id)
@@ -146,6 +148,27 @@ func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
 	}
 
 	return app, nil
+}
+
+func AcceptCode(email string) error {
+	const op = "storage.postgres.AcceptCode"
+	err := godotenv.Load()
+
+	db, err := sql.Open("postgres", os.Getenv("StoragePath"))
+	if err != nil {
+		return err
+	}
+
+	stmt, err := db.Prepare("UPDATE user_profile SET verified = true WHERE email = $1")
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = stmt.Exec(email)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
 }
 
 func (s *Storage) Stop() error {

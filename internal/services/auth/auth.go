@@ -9,6 +9,7 @@ import (
 	"gRPC/internal/lib/jwt"
 	"gRPC/internal/lib/sl"
 	"gRPC/internal/storage"
+	"gRPC/internal/storage/postgres"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"strconv"
@@ -152,19 +153,6 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, password strin
 	return id, nil
 }
 
-//func (a *Auth) GetCode(
-//	ctx context.Context, email string,
-//) (string, error) {
-//	const op = "Auth.GetCode"
-//
-//	log := a.log.With(
-//		slog.String("email", email),
-//	)
-//
-//	log.Info("trying to send code")
-//
-//}
-
 // ValidateCode verifies if confirmation code provided by user is valid
 //
 // If so return true, else false
@@ -186,6 +174,12 @@ func (a *Auth) ValidateCode(
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(dbCode), []byte(code)); err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = postgres.AcceptCode(email)
+	if err != nil {
+		fmt.Println(err)
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
