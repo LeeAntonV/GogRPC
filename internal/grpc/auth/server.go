@@ -2,12 +2,15 @@ package grpcapp
 
 import (
 	"context"
+	"fmt"
 	ssov5 "github.com/LeeAntonV/Protos/gen/go/sso"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/mail"
 	"strings"
+	"time"
 )
 
 type Auth interface {
@@ -74,9 +77,24 @@ func (s *serverAPI) ValidCode(ctx context.Context, req *ssov5.CodeRequest) (*sso
 	if len(strings.TrimSpace(req.Code)) == emptyValue {
 		return nil, status.Error(codes.Internal, "Code field must not be empty")
 	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
+	val, err := rdb.Get(ctx, req.Email).Result()
+	if val == req.Code {
+		fmt.Println(val)
+		return &ssov5.CodeResponse{ValidCode: false}, status.Error(codes.Internal, "Wrong code")
+	}
 
 	validCode, err := s.auth.ValidateCode(ctx, req.Email, req.Code)
 	if err != nil {
+		if isUnique := UniqueValue(ctx, rdb, req.Email, req.Code, 1*time.Minute); !isUnique {
+			rdb.Set(ctx, req.Email, req.Code, 1*time.Minute)
+		}
+
 		return nil, status.Error(codes.Internal, "Wrong code")
 	}
 
@@ -92,4 +110,14 @@ func validateCredentials(req *ssov5.RegisterRequest) error {
 	}
 
 	return nil
+}
+
+func UniqueValue(ctx context.Context, client *redis.Client, key string, value string, exp time.Duration) bool {
+	isNew, err := client.SetNX(ctx, key, value, exp).Result()
+
+	if err != nil {
+		return false
+	}
+
+	return isNew
 }
