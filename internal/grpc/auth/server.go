@@ -85,7 +85,6 @@ func (s *serverAPI) ValidCode(ctx context.Context, req *ssov5.CodeRequest) (*sso
 
 	val, err := rdb.Get(ctx, req.Email).Result()
 	if val == req.Code {
-		fmt.Println(val)
 		return &ssov5.CodeResponse{ValidCode: false}, status.Error(codes.Internal, "Wrong code")
 	}
 
